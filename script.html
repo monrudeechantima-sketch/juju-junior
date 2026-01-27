@@ -1,0 +1,103 @@
+// script.js
+let chart = null;
+
+const labelsInput = document.getElementById('labelsInput');
+const valuesInput = document.getElementById('valuesInput');
+const chartTypeSelect = document.getElementById('chartType');
+const generateBtn = document.getElementById('generateBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const exampleBtn = document.getElementById('exampleBtn');
+const ctx = document.getElementById('myChart').getContext('2d');
+
+function parseCSVLine(line){
+  return line.split(',').map(s => s.trim()).filter(s => s !== '');
+}
+
+function parseValues(line){
+  return parseCSVLine(line).map(s => {
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  });
+}
+
+function randomColor(alpha=0.8){
+  const r = Math.floor(Math.random()*200)+30;
+  const g = Math.floor(Math.random()*200)+30;
+  const b = Math.floor(Math.random()*200)+30;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function generateColors(count, alpha=0.7){
+  const a = [];
+  for(let i=0;i<count;i++) a.push(randomColor(alpha));
+  return a;
+}
+
+function createChart(type, labels, values){
+  if(chart) chart.destroy();
+
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: type !== 'bar' || values.length > 1 },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    scales: {}
+  };
+
+  // build dataset
+  const dataset = {
+    label: 'Series 1',
+    data: values,
+    backgroundColor: (type === 'pie' || type === 'doughnut') ? generateColors(values.length) : randomColor(0.5),
+    borderColor: (type === 'pie' || type === 'doughnut') ? undefined : randomColor(1),
+    borderWidth: 1,
+    fill: type === 'line' ? false : true,
+    tension: 0.2
+  };
+
+  const config = {
+    type,
+    data: {
+      labels,
+      datasets: [dataset]
+    },
+    options: commonOptions
+  };
+
+  chart = new Chart(ctx, config);
+  downloadBtn.disabled = false;
+}
+
+function showError(msg){
+  alert(msg);
+}
+
+generateBtn.addEventListener('click', ()=>{
+  const labels = parseCSVLine(labelsInput.value);
+  const values = parseValues(valuesInput.value);
+  if(labels.length === 0){ showError('กรุณากรอก labels'); return; }
+  if(values.length === 0){ showError('กรุณากรอก values'); return; }
+  if(labels.length !== values.length){
+    // allow single value for pie? No — require equal lengths
+    showError('จำนวน labels ต้องเท่ากับจำนวน values');
+    return;
+  }
+  const type = chartTypeSelect.value;
+  createChart(type, labels, values);
+});
+
+downloadBtn.addEventListener('click', ()=>{
+  if(!chart) return;
+  const a = document.createElement('a');
+  a.href = document.getElementById('myChart').toDataURL('image/png', 1);
+  a.download = 'chart.png';
+  a.click();
+});
+
+exampleBtn.addEventListener('click', ()=>{
+  labelsInput.value = 'ม.ค.,ก.พ.,มี.ค.,เม.ย.,พ.ค.';
+  valuesInput.value = '10,25,18,30,22';
+  chartTypeSelect.value = 'bar';
+});
